@@ -1,0 +1,209 @@
+#!/bin/sh
+
+# some default values that can be overriden with command line arguments
+FDOS_ISO=fd11src.iso
+IMAGE_SIZE=250
+OVERLAY_PATH="overlay"
+
+# system dependent commands
+SUDO_CMD="sudo"
+MOUNT_CMD="${SUDO_CMD} mount"
+MOUNT_FLAGS="-o uid=`id -u`"
+UMOUNT_CMD="${SUDO_CMD} umount"
+PARTED_CMD="/sbin/parted"
+PARTED_FLAGS="-a optimal"
+KPARTX_CMD="${SUDO_CMD} /sbin/kpartx"
+KPARTX_FLAGS="-av"
+MKFS_CMD="${SUDO_CMD} mkfs"
+MKFS_ARGS="-t msdos -F 16 -n FREEDOS"
+SYSLINUX_CMD="${SUDO_CMD} syslinux"
+
+# ---
+
+usage() {
+    echo "Usage:"
+    echo "\t$0 [-a overlay] [-i isofile] [-s imagesize] [-t workdir] [-n] [-v] [-h] [-o imagename]"
+    echo "\t"
+    echo "\t-a overlay\tRecursively copy files from overlay path onto image."
+    echo "\t-i isofile\tLocation of FreeDOS 1.1 ISO file. (default: fd11src.iso)"
+    echo "\t-s imagesize\tSize of image file in Megabytes. (default: 250)"
+    echo "\t-t workdir\tTemporary directory. (default: use mktemp)"
+    echo "\t-o imagename\tName of image file to write. (default: usbimage-imagesizeM.img)"
+    echo "\t-n\t\tDo not clean up after writing image."
+    echo "\t-v\t\tBe verbose."
+    echo "\t-h\t\tDisplay this help message, then exit."
+    exit 0
+}
+
+msg() {
+    if [ $VERBOSE ]; then
+        echo " ==> $1"
+    fi
+}
+
+die() {
+    echo " !!! ERROR: $1"
+    cleanup
+    exit 1
+}
+
+check_dependencies() {
+    ## check operating system
+    OS=`uname`
+    if [ "$OS" = "Linux" ]; then
+        msg "OS: Linux"
+    elif [ "$OS" = "FreeBSD" ]; then
+        msg "OS: FreeBSD"
+        die "FreeBSD is not yet supported. Sorry."
+    else
+        die "Unknown operating system."
+    fi
+
+    ## TODO: check external tools
+    # syslinux, awk, kpartx, sudo?
+}
+
+
+make_image_devicename() {
+    if [ $OS = "Linux" ]; then
+        # get loopdevice from partition
+        LOOPDEV_RAW=`${KPARTX_CMD} ${KPARTX_FLAGS} "${IMAGE_NAME}"`
+        if [ $? -ne 0 ]; then
+            die "kpartx returned errorcode > 0."
+        fi
+        LOOPDEV=`echo $LOOPDEV_RAW | awk '{ print $3 }'`
+        msg "kpartx returned '${LOOPDEV_RAW}', using '/dev/mapper/${LOOPDEV}'"
+        [ $LOOPDEV ] || die "Missing device name from kpartx."
+    elif [ $OS = "FreeBSD" ]; then
+        die "FreeBSD image mount not yet implemented. Sorry."
+        # TODO: see mdconfig(8)
+    fi
+}
+
+
+copy_overlay() {
+    if [ $OVERLAY_PATH ]; then
+        msg "Copying files from overlay ${OVERLAY_PATH}…"
+        cp -R "${OVERLAY_PATH}"/* "${WORK}/image/"
+    fi
+}
+
+cleanup() {
+    if [ $NOCLEANUP ]; then
+        msg "Doing no cleanup upon users request."
+        msg "Please unmount filesystems ${WORK}/{iso,image} and then remove ${WORK} on your own."
+    else
+        msg "Cleaning up…"
+        if [ $is_mounted_iso ]; then
+            #msg "Unmounting ${WORK}/iso"
+            $UMOUNT_CMD "${WORK}/iso"
+        fi
+        if [ $is_mounted_image ]; then
+            #msg "Unmounting ${WORK}/image"
+            $UMOUNT_CMD "${WORK}/image"
+        fi
+        # delete kpartx loop device
+        ${KPARTX_CMD} -d "${IMAGE_NAME}"
+        #msg "Removing ${WORK} …"
+        # We need to fix permissions, otherwise rm -rf fails.
+        chmod -R u+w "${WORK}"
+        rm -rf -- "${WORK}"
+    fi
+}
+
+# =====================================================================
+
+## check command line arguments
+while getopts "i:o:s:t:hnv" opt
+do
+    case $opt in
+        a)  OVERLAY_PATH=$OPTARG
+            ;;
+        i)  FDOS_ISO=$OPTARG
+            ;;
+        o)  IMAGE_NAME=$OPTARG
+            ;;
+        s)  IMAGE_SIZE=$OPTARG
+            ;;
+        t)  WORK=$OPTARG
+            ;;
+        h)  usage
+            ;;
+        n)  NOCLEANUP="yes"
+            ;;
+        v)  VERBOSE="yes"
+            ;;
+    esac
+done
+
+### set default for output file
+if [ -z $IMAGE_NAME ]; then
+    IMAGE_NAME=usbimage-${IMAGE_SIZE}M.img
+fi
+
+check_dependencies
+
+### create temporary work dir
+if [ -z $WORK ]; then
+    WORK=`mktemp -d`
+else
+    [ -d "${WORK}" ] || mkdir -p "${WORK}" || die "Creating '${WORK}' failed."
+fi
+
+msg "Creating temporary directories in ${WORK} …"
+for subdir in image iso temp syslinux
+do
+    [ -d "${WORK}/${subdir}" ] || mkdir "${WORK}/${subdir}" || die "Creating '${WORK}/${subdir}' failed."
+done
+
+
+### create image file
+msg "Creating image file, ${IMAGE_SIZE}M bytes…"
+dd if=/dev/zero of="${IMAGE_NAME}" bs=1M count=${IMAGE_SIZE} || die "Creating image file failed"
+
+### partition image file
+msg "Running parted to create partition table…"
+${PARTED_CMD} ${PARTED_FLAGS} "${IMAGE_NAME}" <<EOF
+unit %
+mklabel msdos
+mkpart primary fat16 0 100%
+set 1 boot on
+q
+EOF
+if [ $? -ne 0 ]; then
+    die "parted returned errorcode > 0."
+fi
+
+make_image_devicename "${IMAGE_NAME}" "${WORK}/image"
+## return: LOOPDEV
+
+
+msg "Making filesystem on /dev/mapper/${LOOPDEV}"
+# make filesystem
+${MKFS_CMD} ${MKFS_ARGS} "/dev/mapper/${LOOPDEV}" || die "Could not make filesystem."
+# install syslinux
+msg "Installing syslinux…"
+${SYSLINUX_CMD} -i /dev/mapper/${LOOPDEV} || die "Could not install syslinux bootloader."
+
+msg "Mounting image '${MOUNT_CMD} ${MOUNT_FLAGS} …'"
+# mount image
+${MOUNT_CMD} ${MOUNT_FLAGS} "/dev/mapper/${LOOPDEV}" "${WORK}/image" && is_mounted_image="yes" || die "Failed mounting image file."
+mkdir ${WORK}/image/fdos
+
+msg "Mounting FreeDOS ISO"
+# mount FreeDOS ISO
+${MOUNT_CMD} ${MOUNT_FLAGS} -o ro,loop "${FDOS_ISO}" "${WORK}/iso" && is_mounted_iso="yes" || die "Failed mounting FreeDOS ISO-file."
+
+msg "Unzipping files to temporary location…"
+find "${WORK}"/iso/freedos/packages/base/*.zip | xargs -l unzip -q -LL -n -d "${WORK}/temp"
+
+unzip -q -LL -n -d "${WORK}/syslinux" "${WORK}/iso/freedos/packages/boot/syslnxx.zip" || die "unzip failed."
+msg "Copying FreeDOS files to image…"
+cp -R "${WORK}"/temp/* "${WORK}/image/fdos/" || die "Copy FDOS/* failed."
+msg "Copying chain.c32 from syslinux package…"
+cp "${WORK}/syslinux/bin/chain.c32" "${WORK}/image/fdos/bin/" || die "Copy chain.c32 failed."
+
+copy_overlay
+
+cleanup
+
