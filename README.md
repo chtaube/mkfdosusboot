@@ -93,3 +93,9 @@ ioctl: LOOP_CLR_FD: No such device or address
 ./mkfdosusboot -v  1.77s user 3.54s system 71% cpu 7.458 total
 ```
 
+Hints
+-----
+
+* Add a symlink from `overlay/boot/fd11src.iso` pointing to your FreeDOS 1.1 distribution ISO. The ISO-image will be included on the USB stick and, upon boot, the contents is available as a virtual CD-ROM drive within FreeDOS.
+* The syslinux bootloader is preconfigured to boot Odin 0.6 and 0.7 boot images. Just put the image files into `overlay/boot/fdodin06.144` (from [Odin 0.6](http://odin.fdos.org/)) or `overlay/boot/odin2880.img` (from [Odin 0.7](http://odin.fdos.org/odin2005/)) and run the script.
+* [Memtest86+](http://www.memtest.org/) is supported, too. Download the "Pre-Compiled package for Floppy (DOS - Win)", unzip the file and copy `memtestp.bin` to `overlay/boot/memtestp.bin`.

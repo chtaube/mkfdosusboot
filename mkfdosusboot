@@ -1,4 +1,11 @@
 #!/bin/sh
+#
+# This is an attempt to write a shell script which creates an image file
+# holding a minimal FreeDOS installation. Writing this image file onto a USB
+# flash drive should boot right into FreeDOS. This could be used to update
+# firmware, play old DOS games or whatever.
+
+# This version was tested on Debian 7.6. The written image was bootable.
 
 # some default values that can be overriden with command line arguments
 FDOS_ISO=fd11src.iso
@@ -84,7 +91,7 @@ make_image_devicename() {
 copy_overlay() {
     if [ $OVERLAY_PATH ]; then
         msg "Copying files from overlay ${OVERLAY_PATH}…"
-        cp -R "${OVERLAY_PATH}"/* "${WORK}/image/"
+        cp -RL "${OVERLAY_PATH}"/* "${WORK}/image/"
     fi
 }
 
@@ -147,19 +154,24 @@ check_dependencies
 if [ -z $WORK ]; then
     WORK=`mktemp -d`
 else
-    [ -d "${WORK}" ] || mkdir -p "${WORK}" || die "Creating '${WORK}' failed."
+    [ -d "${WORK}" ] \
+        || mkdir -p "${WORK}" \
+        || die "Creating '${WORK}' failed."
 fi
 
 msg "Creating temporary directories in ${WORK} …"
 for subdir in image iso temp syslinux
 do
-    [ -d "${WORK}/${subdir}" ] || mkdir "${WORK}/${subdir}" || die "Creating '${WORK}/${subdir}' failed."
+    [ -d "${WORK}/${subdir}" ] \
+        || mkdir "${WORK}/${subdir}" \
+        || die "Creating '${WORK}/${subdir}' failed."
 done
 
 
 ### create image file
 msg "Creating image file, ${IMAGE_SIZE}M bytes…"
-dd if=/dev/zero of="${IMAGE_NAME}" bs=1M count=${IMAGE_SIZE} || die "Creating image file failed"
+dd if=/dev/zero of="${IMAGE_NAME}" bs=1M count=${IMAGE_SIZE} \
+    || die "Creating image file failed"
 
 ### partition image file
 msg "Running parted to create partition table…"
@@ -175,33 +187,49 @@ if [ $? -ne 0 ]; then
 fi
 
 make_image_devicename "${IMAGE_NAME}" "${WORK}/image"
-## return: LOOPDEV
+## returns: LOOPDEV
 
 
 msg "Making filesystem on /dev/mapper/${LOOPDEV}"
 # make filesystem
-${MKFS_CMD} ${MKFS_ARGS} "/dev/mapper/${LOOPDEV}" || die "Could not make filesystem."
+${MKFS_CMD} ${MKFS_ARGS} "/dev/mapper/${LOOPDEV}" \
+    || die "Could not make filesystem."
 # install syslinux
 msg "Installing syslinux…"
-${SYSLINUX_CMD} -i /dev/mapper/${LOOPDEV} || die "Could not install syslinux bootloader."
+${SYSLINUX_CMD} -i /dev/mapper/${LOOPDEV} \
+    || die "Could not install syslinux bootloader."
 
 msg "Mounting image '${MOUNT_CMD} ${MOUNT_FLAGS} …'"
 # mount image
-${MOUNT_CMD} ${MOUNT_FLAGS} "/dev/mapper/${LOOPDEV}" "${WORK}/image" && is_mounted_image="yes" || die "Failed mounting image file."
-mkdir ${WORK}/image/fdos
+${MOUNT_CMD} ${MOUNT_FLAGS} "/dev/mapper/${LOOPDEV}" "${WORK}/image" \
+    && is_mounted_image="yes" \
+    || die "Failed mounting image file."
+msg "Creating directory structure on image…"
+for subdir in fdos boot
+do
+    mkdir -p "${WORK}/image/${subdir}"
+done
 
 msg "Mounting FreeDOS ISO"
 # mount FreeDOS ISO
-${MOUNT_CMD} ${MOUNT_FLAGS} -o ro,loop "${FDOS_ISO}" "${WORK}/iso" && is_mounted_iso="yes" || die "Failed mounting FreeDOS ISO-file."
+${MOUNT_CMD} ${MOUNT_FLAGS} -o ro,loop "${FDOS_ISO}" "${WORK}/iso" \
+    && is_mounted_iso="yes" \
+    || die "Failed mounting FreeDOS ISO-file."
 
 msg "Unzipping files to temporary location…"
-find "${WORK}"/iso/freedos/packages/base/*.zip | xargs -l unzip -q -LL -n -d "${WORK}/temp"
+find "${WORK}"/iso/freedos/packages/base/*.zip \
+    | xargs -l unzip -q -LL -n -d "${WORK}/temp"
+unzip -q -LL -n -d "${WORK}/syslinux" "${WORK}/iso/freedos/packages/boot/syslnxx.zip" \
+    || die "unzip failed."
 
-unzip -q -LL -n -d "${WORK}/syslinux" "${WORK}/iso/freedos/packages/boot/syslnxx.zip" || die "unzip failed."
 msg "Copying FreeDOS files to image…"
-cp -R "${WORK}"/temp/* "${WORK}/image/fdos/" || die "Copy FDOS/* failed."
+cp -R "${WORK}"/temp/* "${WORK}/image/fdos/" \
+    || die "Copying FreeDOS files failed."
 msg "Copying chain.c32 from syslinux package…"
-cp "${WORK}/syslinux/bin/chain.c32" "${WORK}/image/fdos/bin/" || die "Copy chain.c32 failed."
+cp "${WORK}/syslinux/bin/chain.c32" "${WORK}/image/boot/" \
+    || die "Copy chain.c32 failed."
+cp "${WORK}/syslinux/bin/memdisk" "${WORK}/image/boot/" \
+    || die "Copy memdisk failed."
 
 copy_overlay
 
