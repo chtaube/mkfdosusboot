@@ -24,8 +24,9 @@ KPARTX_FLAGS="-av"
 MKFS_CMD="${SUDO_CMD} mkfs"
 MKFS_ARGS="-t msdos -F 16 -n FREEDOS"
 SYSLINUX_CMD="${SUDO_CMD} syslinux"
-
-
+SYSLINUX_MEMDISK="/usr/lib/syslinux/memdisk"
+SYSLINUX_PATH="/usr/lib/syslinux/modules/bios"
+SYSLINUX_MODULES="chain.c32 libcom32.c32 libutil.c32 hdt.c32 libgpl.c32 libmenu.c32"
 # ---
 
 usage() {
@@ -227,11 +228,18 @@ unzip -q -LL -n -d "${WORK}/syslinux" "${WORK}/iso/freedos/packages/boot/syslnxx
 msg "Copying FreeDOS files to image…"
 cp -R "${WORK}"/temp/* "${WORK}/image/fdos/" \
     || die "Copying FreeDOS files failed."
-msg "Copying chain.c32 from syslinux package…"
-cp "${WORK}/syslinux/bin/chain.c32" "${WORK}/image/boot/" \
-    || die "Copy chain.c32 failed."
-cp "${WORK}/syslinux/bin/memdisk" "${WORK}/image/boot/" \
-    || die "Copy memdisk failed."
+
+msg "Copying syslinux modules…"
+if [ ! -z ${SYSLINUX_MEMDISK} ]; then
+    cp "${SYSLINUX_MEMDISK}" "${WORK}/image/boot/" \
+        || die "Copying syslinux memdisk failed."
+fi
+for slmodule in $SYSLINUX_MODULES
+do
+    echo $slmodule
+    cp "${SYSLINUX_PATH}/${slmodule}" "${WORK}/image/boot/" \
+        || die "Copying syslinux module <${slmodule}> failed."
+done
 
 copy_overlay
 
