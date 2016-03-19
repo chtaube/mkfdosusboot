@@ -25,6 +25,7 @@ MKFS_CMD="${SUDO_CMD} mkfs"
 MKFS_ARGS="-t msdos -F 16 -n FREEDOS"
 SYSLINUX_CMD="${SUDO_CMD} syslinux"
 
+
 # ---
 
 usage() {
@@ -78,9 +79,11 @@ make_image_devicename() {
         if [ $? -ne 0 ]; then
             die "kpartx returned errorcode > 0."
         fi
-        LOOPDEV=`echo $LOOPDEV_RAW | awk '{ print $3 }'`
-        msg "kpartx returned '${LOOPDEV_RAW}', using '/dev/mapper/${LOOPDEV}'"
+        LOOPDEV=`echo $LOOPDEV_RAW | awk '{ print "/dev/mapper/"$3 }'`
+        msg "kpartx returned '${LOOPDEV_RAW}', using '${LOOPDEV}'"
+        sleep 3     # -> http://freedos.chtaube.eu/?p=17
         [ $LOOPDEV ] || die "Missing device name from kpartx."
+        [ -e $LOOPDEV ] || die "Device name does not exist."
     elif [ $OS = "FreeBSD" ]; then
         die "FreeBSD image mount not yet implemented. Sorry."
         # TODO: see mdconfig(8)
@@ -189,19 +192,18 @@ fi
 make_image_devicename "${IMAGE_NAME}" "${WORK}/image"
 ## returns: LOOPDEV
 
-
-msg "Making filesystem on /dev/mapper/${LOOPDEV}"
+msg "Making filesystem on ${LOOPDEV}"
 # make filesystem
-${MKFS_CMD} ${MKFS_ARGS} "/dev/mapper/${LOOPDEV}" \
+${MKFS_CMD} ${MKFS_ARGS} "${LOOPDEV}" \
     || die "Could not make filesystem."
 # install syslinux
 msg "Installing syslinux…"
-${SYSLINUX_CMD} -i /dev/mapper/${LOOPDEV} \
+${SYSLINUX_CMD} -i ${LOOPDEV} \
     || die "Could not install syslinux bootloader."
 
 msg "Mounting image '${MOUNT_CMD} ${MOUNT_FLAGS} …'"
 # mount image
-${MOUNT_CMD} ${MOUNT_FLAGS} "/dev/mapper/${LOOPDEV}" "${WORK}/image" \
+${MOUNT_CMD} ${MOUNT_FLAGS} "${LOOPDEV}" "${WORK}/image" \
     && is_mounted_image="yes" \
     || die "Failed mounting image file."
 msg "Creating directory structure on image…"
