@@ -8,7 +8,7 @@ set tmp=%dosdir%\temp
 SET BLASTER=A220 I5 D1 H5 P330
 set DIRCMD=/P /OGN
 if "%config%"=="4" goto end
-lh doslfn 
+lh doslfn
 SHSUCDX /QQ /D3
 IF EXIST BOOT\FD11SRC.ISO LH SHSUCDHD /Q /F:BOOT\FD11SRC.ISO
 LH FDAPM APMDOS

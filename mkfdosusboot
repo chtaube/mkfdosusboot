@@ -236,7 +236,6 @@ if [ ! -z ${SYSLINUX_MEMDISK} ]; then
 fi
 for slmodule in $SYSLINUX_MODULES
 do
-    echo $slmodule
     cp "${SYSLINUX_PATH}/${slmodule}" "${WORK}/image/boot/" \
         || die "Copying syslinux module <${slmodule}> failed."
 done

@@ -1,5 +1,5 @@
-Boot FreeDOS from USB
-======================
+FreeDOS image file generator script
+===================================
 
 This is an attempt to write a shell script which creates an image file holding a minimal FreeDOS
 installation. Writing this image file onto a USB flash drive should boot right into FreeDOS.
@@ -20,7 +20,7 @@ Current dependencies
 
 These tools are required for the script to run:
 
-* sh
+* /bin/sh (tested with dash on Debian 8.2)
 * unzip (for unpacking FreeDOS distribution sets)
 * awk
 * kpartx (access partitions within image files)
@@ -28,16 +28,20 @@ These tools are required for the script to run:
 * syslinux
 * sudo (script needs root for mounting and unmounting)
 
-Please note that this script does barely check for errors yet!
+Please note that this script barely checks for errors yet!
+
 
 Goals (to be implemented)
 -------------------------
 
-* Be portable. Don't expect a specific shell. I want it to run on Linux, FreeBSD, MacOS X and maybe other operating systems which can run shell scripts (this means Windows will not be unsupported, sorry guys).
+* Be portable. Don't expect a specific shell. While I wrote this for my Debian system, it should work on other Linux distributions, too. I'd llove to add support for FreeBSD but there are still some tools missing.
  * Problem: kpartx is only available on Linux platform. For FreeBSD, see mdconfig(8).
 * Try to be user friendly.
 * Fail gracefully. Unmount and clean up temporary files.
 * Auto-download FreeDOS distribution from server if not found locally.
+ * Maybe drop iso support and just look for the required FreeDOS base package.
+* Include FDNPKG package manager.
+
 
 Bugs
 ----
@@ -58,39 +62,36 @@ Screenshot
 
 
 ```
-% ./mkfdosusboot -v
- ==> TODO: check_dependencies()
- ==> Creating temporary directories in /tmp/tmp.7uJSWbbnOZ …
+ ==> OS: Linux
+ ==> Creating temporary directories in /tmp/tmp.vmkR5noNv6 …
  ==> Creating image file, 250M bytes…
 250+0 records in
 250+0 records out
-262144000 bytes (262 MB) copied, 2.07355 s, 126 MB/s
- ==> Creating partition table…
-WARNING: You are not superuser.  Watch out for permissions.
+262144000 bytes (262 MB) copied, 2.37372 s, 110 MB/s
+ ==> Running parted to create partition table…
+WARNING: You are not superuser. Watch out for permissions.
 GNU Parted 3.2
-Using /home/ct/freedos/usbootimg/usbimage-250M.img
+Using /home/chtaube/freedos/mkfdosusboot/usbimage-250M.img
 Welcome to GNU Parted! Type 'help' to view a list of commands.
-(parted) unit %                                                           
-(parted) mklabel msdos                                                    
-(parted) mkpart primary fat16 0 100%                                      
-(parted) set 1 boot on                                                    
-(parted) q                                                                
- ==> kpartx returned 'add map loop0p1 (254:0): 0 509952 linear /dev/loop0 2048', using 'loop0p1'
+(parted) unit % 
+(parted) mklabel msdos 
+(parted) mkpart primary fat16 0 100% 
+(parted) set 1 boot on 
+(parted) q 
+ ==> kpartx returned 'add map loop0p1 (253:0): 0 509952 linear /dev/loop0 2048', using '/dev/mapper/loop0p1'
  ==> Making filesystem on /dev/mapper/loop0p1
-mkfs.fat 3.0.26 (2014-03-07)
+mkfs.fat 3.0.27 (2014-11-12)
 unable to get drive geometry, using default 255/63
  ==> Installing syslinux…
- ==> Mounting image
+ ==> Mounting image 'sudo mount -o uid=1000 …'
+ ==> Creating directory structure on image…
  ==> Mounting FreeDOS ISO
  ==> Unzipping files to temporary location…
- ==> Copying files to image…
- ==> Copying chain.c32…
+ ==> Copying FreeDOS files to image…
+ ==> Copying syslinux modules…
  ==> Copying files from overlay overlay…
- ==> Unmounting /tmp/tmp.7uJSWbbnOZ/iso
- ==> Unmounting /tmp/tmp.7uJSWbbnOZ/image
-ioctl: LOOP_CLR_FD: No such device or address
- ==> Removing /tmp/tmp.7uJSWbbnOZ …
-./mkfdosusboot -v  1.77s user 3.54s system 71% cpu 7.458 total
+ ==> Cleaning up…
+loop deleted : /dev/loop0
 ```
 
 Hints
@@ -98,4 +99,5 @@ Hints
 
 * Add a symlink from `overlay/boot/fd11src.iso` pointing to your FreeDOS 1.1 distribution ISO. The ISO-image will be included on the USB stick and, upon boot, the contents is available as a virtual CD-ROM drive within FreeDOS.
 * The syslinux bootloader is preconfigured to boot Odin 0.6 and 0.7 boot images. Just put the image files into `overlay/boot/fdodin06.144` (from [Odin 0.6](http://odin.fdos.org/)) or `overlay/boot/odin2880.img` (from [Odin 0.7](http://odin.fdos.org/odin2005/)) and run the script.
-* [Memtest86+](http://www.memtest.org/) is supported, too. Download the "Pre-Compiled package for Floppy (DOS - Win)", unzip the file and copy `memtestp.bin` to `overlay/boot/memtestp.bin`.
+* Boot menu items for [Memtest86+](http://www.memtest.org/) and [Hardware Detection Tool](http://hdt-project.org/) have been added. For Memtest86+, download the "Pre-Compiled package for Floppy (DOS - Win)", unzip the file and copy `memtestp.bin` to `overlay/boot/memtestp` (remove the .bin extension).
+
