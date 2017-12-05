@@ -94,7 +94,7 @@ make_image_devicename() {
 
 copy_overlay() {
     if [ $OVERLAY_PATH ]; then
-        msg "Copying files from overlay ${OVERLAY_PATH}…"
+        msg "Copying files from overlay ${OVERLAY_PATH}..."
         cp -RL "${OVERLAY_PATH}"/* "${WORK}/image/"
     fi
 }
@@ -104,7 +104,7 @@ cleanup() {
         msg "Doing no cleanup upon users request."
         msg "Please unmount filesystems ${WORK}/{iso,image} and then remove ${WORK} on your own."
     else
-        msg "Cleaning up…"
+        msg "Cleaning up..."
         if [ $is_mounted_iso ]; then
             #msg "Unmounting ${WORK}/iso"
             $UMOUNT_CMD "${WORK}/iso"
@@ -115,7 +115,7 @@ cleanup() {
         fi
         # delete kpartx loop device
         ${KPARTX_CMD} -d "${IMAGE_NAME}"
-        #msg "Removing ${WORK} …"
+        #msg "Removing ${WORK} ..."
         # We need to fix permissions, otherwise rm -rf fails.
         chmod -R u+w "${WORK}"
         rm -rf -- "${WORK}"
@@ -163,7 +163,7 @@ else
         || die "Creating '${WORK}' failed."
 fi
 
-msg "Creating temporary directories in ${WORK} …"
+msg "Creating temporary directories in ${WORK} ..."
 for subdir in image iso temp syslinux
 do
     [ -d "${WORK}/${subdir}" ] \
@@ -173,12 +173,12 @@ done
 
 
 ### create image file
-msg "Creating image file, ${IMAGE_SIZE}M bytes…"
+msg "Creating image file, ${IMAGE_SIZE}M bytes..."
 dd if=/dev/zero of="${IMAGE_NAME}" bs=1M count=${IMAGE_SIZE} \
     || die "Creating image file failed"
 
 ### partition image file
-msg "Running parted to create partition table…"
+msg "Running parted to create partition table..."
 ${PARTED_CMD} ${PARTED_FLAGS} "${IMAGE_NAME}" <<EOF
 unit %
 mklabel msdos
@@ -198,16 +198,16 @@ msg "Making filesystem on ${LOOPDEV}"
 ${MKFS_CMD} ${MKFS_ARGS} "${LOOPDEV}" \
     || die "Could not make filesystem."
 # install syslinux
-msg "Installing syslinux…"
+msg "Installing syslinux..."
 ${SYSLINUX_CMD} -i ${LOOPDEV} \
     || die "Could not install syslinux bootloader."
 
-msg "Mounting image '${MOUNT_CMD} ${MOUNT_FLAGS} …'"
+msg "Mounting image '${MOUNT_CMD} ${MOUNT_FLAGS} ...'"
 # mount image
 ${MOUNT_CMD} ${MOUNT_FLAGS} "${LOOPDEV}" "${WORK}/image" \
     && is_mounted_image="yes" \
     || die "Failed mounting image file."
-msg "Creating directory structure on image…"
+msg "Creating directory structure on image..."
 for subdir in fdos boot
 do
     mkdir -p "${WORK}/image/${subdir}"
@@ -219,17 +219,17 @@ ${MOUNT_CMD} ${MOUNT_FLAGS} -o ro,loop "${FDOS_ISO}" "${WORK}/iso" \
     && is_mounted_iso="yes" \
     || die "Failed mounting FreeDOS ISO-file."
 
-msg "Unzipping files to temporary location…"
+msg "Unzipping files to temporary location..."
 find "${WORK}"/iso/freedos/packages/base/*.zip \
     | xargs -l unzip -q -LL -n -d "${WORK}/temp"
 unzip -q -LL -n -d "${WORK}/syslinux" "${WORK}/iso/freedos/packages/boot/syslnxx.zip" \
     || die "unzip failed."
 
-msg "Copying FreeDOS files to image…"
+msg "Copying FreeDOS files to image..."
 cp -R "${WORK}"/temp/* "${WORK}/image/fdos/" \
     || die "Copying FreeDOS files failed."
 
-msg "Copying syslinux modules…"
+msg "Copying syslinux modules..."
 if [ ! -z ${SYSLINUX_MEMDISK} ]; then
     cp "${SYSLINUX_MEMDISK}" "${WORK}/image/boot/" \
         || die "Copying syslinux memdisk failed."
