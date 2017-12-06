@@ -73,11 +73,11 @@ WARNING: You are not superuser. Watch out for permissions.
 GNU Parted 3.2
 Using /home/chtaube/freedos/mkfdosusboot/usbimage-250M.img
 Welcome to GNU Parted! Type 'help' to view a list of commands.
-(parted) unit % 
-(parted) mklabel msdos 
-(parted) mkpart primary fat16 0 100% 
-(parted) set 1 boot on 
-(parted) q 
+(parted) unit %
+(parted) mklabel msdos
+(parted) mkpart primary fat16 0 100%
+(parted) set 1 boot on
+(parted) q
  ==> kpartx returned 'add map loop0p1 (253:0): 0 509952 linear /dev/loop0 2048', using '/dev/mapper/loop0p1'
  ==> Making filesystem on /dev/mapper/loop0p1
 mkfs.fat 3.0.27 (2014-11-12)
