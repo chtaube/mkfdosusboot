@@ -5,7 +5,8 @@
 # flash drive should boot right into FreeDOS. This could be used to update
 # firmware, play old DOS games or whatever.
 
-# This version was tested on Debian 7.6. The written image was bootable.
+# This version was tested on Debian GNU/Linux 9.2 (stretch). The
+# written image was bootable.
 
 # some default values that can be overriden with command line arguments
 IMAGE_SIZE=500

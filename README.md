@@ -20,7 +20,7 @@ Current dependencies
 
 These tools are required for the script to run:
 
-* /bin/sh (tested with dash on Debian 8.2)
+* /bin/sh (tested with dash on Debian 9.2)
 * unzip (for unpacking FreeDOS distribution sets)
 * awk
 * kpartx (access partitions within image files)
