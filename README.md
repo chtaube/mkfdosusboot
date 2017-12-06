@@ -97,7 +97,7 @@ loop deleted : /dev/loop0
 Hints
 -----
 
-* Add a symlink from `overlay/boot/fd11src.iso` pointing to your FreeDOS 1.1 distribution ISO. The ISO-image will be included on the USB stick and, upon boot, the contents is available as a virtual CD-ROM drive within FreeDOS.
+* Add a symlink from `overlay/boot/FD12CD.iso` pointing to your FreeDOS 1.2 distribution ISO. The ISO-image will be included on the USB stick and, upon boot, the contents is available as a virtual CD-ROM drive within FreeDOS.
 * The syslinux bootloader is preconfigured to boot Odin 0.6 and 0.7 boot images. Just put the image files into `overlay/boot/fdodin06.144` (from [Odin 0.6](http://odin.fdos.org/)) or `overlay/boot/odin2880.img` (from [Odin 0.7](http://odin.fdos.org/odin2005/)) and run the script.
 * Boot menu items for [Memtest86+](http://www.memtest.org/) and [Hardware Detection Tool](http://hdt-project.org/) have been added. For Memtest86+, download the "Pre-Compiled package for Floppy (DOS - Win)", unzip the file and copy `memtestp.bin` to `overlay/boot/memtestp` (remove the .bin extension).
 

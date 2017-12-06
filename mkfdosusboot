@@ -8,10 +8,10 @@
 # This version was tested on Debian 7.6. The written image was bootable.
 
 # some default values that can be overriden with command line arguments
-FDOS_ISO=fd11src.iso
 IMAGE_SIZE=250
 OVERLAY_PATH="overlay"
 IMAGE_NAME=usbimage-${IMAGE_SIZE}M.img
+FDOS_ISO="${OVERLAY_PATH}/boot/FD12CD.iso"
 
 # system dependent commands
 SUDO_CMD="sudo"
@@ -28,6 +28,11 @@ SYSLINUX_CMD="${SUDO_CMD} syslinux"
 SYSLINUX_MEMDISK="/usr/lib/syslinux/memdisk"
 SYSLINUX_PATH="/usr/lib/syslinux/modules/bios"
 SYSLINUX_MODULES="chain.c32 libcom32.c32 libutil.c32 hdt.c32 libgpl.c32 libmenu.c32"
+
+# set later
+FDOS_DIR=""
+FDOS_BASE=""
+FDOS_SYSLNXX=""
 # ---
 
 usage() {
@@ -216,14 +221,37 @@ ${MOUNT_CMD} ${MOUNT_FLAGS} -o ro,loop "${FDOS_ISO}" "${WORK}/iso" \
     || die "Failed mounting FreeDOS ISO-file."
 
 msg "Unzipping files to temporary location..."
-find "${WORK}"/iso/freedos/packages/base/*.zip \
-    | xargs -l unzip -q -LL -n -d "${WORK}/temp"
-unzip -q -LL -n -d "${WORK}/syslinux" "${WORK}/iso/freedos/packages/boot/syslnxx.zip" \
-    || die "unzip failed."
+
+# The directory structure for the FreeDOS ISO changed between 1.1 and
+# 1.2. Here we support either.
+#
+# FreeDOS 1.1 ISO
+if [ -d "${WORK}/iso/freedos/packages/base" ]; then
+    FDOS_DIR="${WORK}/iso/freedos/packages"
+    FDOS_BASE="${FDOS_DIR}/base"
+    FDOS_SYSLNXX="${FDOS_DIR}/boot/syslnxx.zip"
+# FreeDOS 1.2 ISO
+elif [ -d "${WORK}/iso/BASE" ]; then
+    FDOS_DIR="${WORK}/iso"
+    FDOS_BASE="${FDOS_DIR}/BASE"
+    FDOS_SYSLNXX="${FDOS_DIR}/BOOT/SYSLNX.ZIP"
+else
+    die "Failed to read the FreeDOS ISO."
+fi
+find "${FDOS_BASE}" -iname '*.zip' -exec \
+    unzip -q -LL -n -d "${WORK}/temp" {} \; &&
+    unzip -q -LL -n -d "${WORK}/syslinux" "${FDOS_SYSLNXX}" ||
+    die "unzip failed."
 
 msg "Copying FreeDOS files to image..."
 cp -R "${WORK}"/temp/* "${WORK}/image/fdos/" \
     || die "Copying FreeDOS files failed."
+
+# The kernel filename changed in FreeDOS 1.2
+if [ ! -f "${WORK}/image/fdos/bin/kernel.sys" ]; then
+    cp "${WORK}/image/fdos/bin/kernl386.sys" \
+        "${WORK}/image/fdos/bin/kernel.sys"
+fi
 
 msg "Copying syslinux modules..."
 if [ ! -z ${SYSLINUX_MEMDISK} ]; then
