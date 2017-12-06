@@ -11,6 +11,7 @@
 FDOS_ISO=fd11src.iso
 IMAGE_SIZE=250
 OVERLAY_PATH="overlay"
+IMAGE_NAME=usbimage-${IMAGE_SIZE}M.img
 
 # system dependent commands
 SUDO_CMD="sudo"
@@ -146,11 +147,6 @@ do
             ;;
     esac
 done
-
-### set default for output file
-if [ -z $IMAGE_NAME ]; then
-    IMAGE_NAME=usbimage-${IMAGE_SIZE}M.img
-fi
 
 check_dependencies
 
