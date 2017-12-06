@@ -8,7 +8,7 @@
 # This version was tested on Debian 7.6. The written image was bootable.
 
 # some default values that can be overriden with command line arguments
-IMAGE_SIZE=250
+IMAGE_SIZE=500
 OVERLAY_PATH="overlay"
 IMAGE_NAME=usbimage-${IMAGE_SIZE}M.img
 FDOS_ISO="${OVERLAY_PATH}/boot/FD12CD.iso"
