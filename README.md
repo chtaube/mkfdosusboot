@@ -5,14 +5,7 @@ This is an attempt to write a shell script which creates an image file holding a
 installation. Writing this image file onto a USB flash drive should boot right into FreeDOS.
 This could be used to update firmware, play old DOS games or whatever.
 
-Please note that I already offer *prebuilt* images on
-[my website](http://chtaube.eu/computers/freedos/bootable-usb/).
-Just download and write one of those image files onto your USB flash drive
-and it will boot right into FreeDOS.
-
 This script tries to automate the rather complex steps involved in making a bootable image.
-A description on how to manually generate an image file can be found
-[here](http://chtaube.eu/computers/freedos/bootable-usb/image-generation-howto/).
 
 
 Current dependencies

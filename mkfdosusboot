@@ -89,7 +89,7 @@ make_image_devicename() {
         fi
         LOOPDEV=`echo $LOOPDEV_RAW | awk '{ print "/dev/mapper/"$3 }'`
         msg "kpartx returned '${LOOPDEV_RAW}', using '${LOOPDEV}'"
-        sleep 3     # -> http://freedos.chtaube.eu/?p=17
+        sleep 3
         [ $LOOPDEV ] || die "Missing device name from kpartx."
         [ -e $LOOPDEV ] || die "Device name does not exist."
     elif [ $OS = "FreeBSD" ]; then
