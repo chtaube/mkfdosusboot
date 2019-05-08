@@ -5,12 +5,14 @@
 # flash drive should boot right into FreeDOS. This could be used to update
 # firmware, play old DOS games or whatever.
 
-# This version was tested on Debian 7.6. The written image was bootable.
+# This version was tested on Debian GNU/Linux 9.2 (stretch). The
+# written image was bootable.
 
 # some default values that can be overriden with command line arguments
-FDOS_ISO=fd11src.iso
-IMAGE_SIZE=250
+IMAGE_SIZE=500
 OVERLAY_PATH="overlay"
+IMAGE_NAME=usbimage-${IMAGE_SIZE}M.img
+FDOS_ISO="${OVERLAY_PATH}/boot/FD12CD.iso"
 
 # system dependent commands
 SUDO_CMD="sudo"
@@ -27,6 +29,11 @@ SYSLINUX_CMD="${SUDO_CMD} syslinux"
 SYSLINUX_MEMDISK="/usr/lib/syslinux/memdisk"
 SYSLINUX_PATH="/usr/lib/syslinux/modules/bios"
 SYSLINUX_MODULES="chain.c32 libcom32.c32 libutil.c32 hdt.c32 libgpl.c32 libmenu.c32"
+
+# set later
+FDOS_DIR=""
+FDOS_BASE=""
+FDOS_SYSLNXX=""
 # ---
 
 usage() {
@@ -34,8 +41,8 @@ usage() {
     echo "\t$0 [-a overlay] [-i isofile] [-s imagesize] [-t workdir] [-n] [-v] [-h] [-o imagename]"
     echo "\t"
     echo "\t-a overlay\tRecursively copy files from overlay path onto image."
-    echo "\t-i isofile\tLocation of FreeDOS 1.1 ISO file. (default: fd11src.iso)"
-    echo "\t-s imagesize\tSize of image file in Megabytes. (default: 250)"
+    echo "\t-i isofile\tLocation of FreeDOS 1.1 ISO file. (default: ${FDOS_ISO})"
+    echo "\t-s imagesize\tSize of image file in Megabytes. (default: ${IMAGE_SIZE})"
     echo "\t-t workdir\tTemporary directory. (default: use mktemp)"
     echo "\t-o imagename\tName of image file to write. (default: usbimage-imagesizeM.img)"
     echo "\t-n\t\tDo not clean up after writing image."
@@ -94,7 +101,7 @@ make_image_devicename() {
 
 copy_overlay() {
     if [ $OVERLAY_PATH ]; then
-        msg "Copying files from overlay ${OVERLAY_PATH}…"
+        msg "Copying files from overlay ${OVERLAY_PATH}..."
         cp -RL "${OVERLAY_PATH}"/* "${WORK}/image/"
     fi
 }
@@ -104,7 +111,7 @@ cleanup() {
         msg "Doing no cleanup upon users request."
         msg "Please unmount filesystems ${WORK}/{iso,image} and then remove ${WORK} on your own."
     else
-        msg "Cleaning up…"
+        msg "Cleaning up..."
         if [ $is_mounted_iso ]; then
             #msg "Unmounting ${WORK}/iso"
             $UMOUNT_CMD "${WORK}/iso"
@@ -115,7 +122,7 @@ cleanup() {
         fi
         # delete kpartx loop device
         ${KPARTX_CMD} -d "${IMAGE_NAME}"
-        #msg "Removing ${WORK} …"
+        #msg "Removing ${WORK} ..."
         # We need to fix permissions, otherwise rm -rf fails.
         chmod -R u+w "${WORK}"
         rm -rf -- "${WORK}"
@@ -147,11 +154,6 @@ do
     esac
 done
 
-### set default for output file
-if [ -z $IMAGE_NAME ]; then
-    IMAGE_NAME=usbimage-${IMAGE_SIZE}M.img
-fi
-
 check_dependencies
 
 ### create temporary work dir
@@ -163,7 +165,7 @@ else
         || die "Creating '${WORK}' failed."
 fi
 
-msg "Creating temporary directories in ${WORK} …"
+msg "Creating temporary directories in ${WORK} ..."
 for subdir in image iso temp syslinux
 do
     [ -d "${WORK}/${subdir}" ] \
@@ -173,12 +175,12 @@ done
 
 
 ### create image file
-msg "Creating image file, ${IMAGE_SIZE}M bytes…"
+msg "Creating image file, ${IMAGE_SIZE}M bytes..."
 dd if=/dev/zero of="${IMAGE_NAME}" bs=1M count=${IMAGE_SIZE} \
     || die "Creating image file failed"
 
 ### partition image file
-msg "Running parted to create partition table…"
+msg "Running parted to create partition table..."
 ${PARTED_CMD} ${PARTED_FLAGS} "${IMAGE_NAME}" <<EOF
 unit %
 mklabel msdos
@@ -198,16 +200,16 @@ msg "Making filesystem on ${LOOPDEV}"
 ${MKFS_CMD} ${MKFS_ARGS} "${LOOPDEV}" \
     || die "Could not make filesystem."
 # install syslinux
-msg "Installing syslinux…"
+msg "Installing syslinux..."
 ${SYSLINUX_CMD} -i ${LOOPDEV} \
     || die "Could not install syslinux bootloader."
 
-msg "Mounting image '${MOUNT_CMD} ${MOUNT_FLAGS} …'"
+msg "Mounting image '${MOUNT_CMD} ${MOUNT_FLAGS} ...'"
 # mount image
 ${MOUNT_CMD} ${MOUNT_FLAGS} "${LOOPDEV}" "${WORK}/image" \
     && is_mounted_image="yes" \
     || die "Failed mounting image file."
-msg "Creating directory structure on image…"
+msg "Creating directory structure on image..."
 for subdir in fdos boot
 do
     mkdir -p "${WORK}/image/${subdir}"
@@ -219,17 +221,40 @@ ${MOUNT_CMD} ${MOUNT_FLAGS} -o ro,loop "${FDOS_ISO}" "${WORK}/iso" \
     && is_mounted_iso="yes" \
     || die "Failed mounting FreeDOS ISO-file."
 
-msg "Unzipping files to temporary location…"
-find "${WORK}"/iso/freedos/packages/base/*.zip \
-    | xargs -l unzip -q -LL -n -d "${WORK}/temp"
-unzip -q -LL -n -d "${WORK}/syslinux" "${WORK}/iso/freedos/packages/boot/syslnxx.zip" \
-    || die "unzip failed."
+msg "Unzipping files to temporary location..."
 
-msg "Copying FreeDOS files to image…"
+# The directory structure for the FreeDOS ISO changed between 1.1 and
+# 1.2. Here we support either.
+#
+# FreeDOS 1.1 ISO
+if [ -d "${WORK}/iso/freedos/packages/base" ]; then
+    FDOS_DIR="${WORK}/iso/freedos/packages"
+    FDOS_BASE="${FDOS_DIR}/base"
+    FDOS_SYSLNXX="${FDOS_DIR}/boot/syslnxx.zip"
+# FreeDOS 1.2 ISO
+elif [ -d "${WORK}/iso/BASE" ]; then
+    FDOS_DIR="${WORK}/iso"
+    FDOS_BASE="${FDOS_DIR}/BASE"
+    FDOS_SYSLNXX="${FDOS_DIR}/BOOT/SYSLNX.ZIP"
+else
+    die "Failed to read the FreeDOS ISO."
+fi
+find "${FDOS_BASE}" -iname '*.zip' -exec \
+    unzip -q -LL -n -d "${WORK}/temp" {} \; &&
+    unzip -q -LL -n -d "${WORK}/syslinux" "${FDOS_SYSLNXX}" ||
+    die "unzip failed."
+
+msg "Copying FreeDOS files to image..."
 cp -R "${WORK}"/temp/* "${WORK}/image/fdos/" \
     || die "Copying FreeDOS files failed."
 
-msg "Copying syslinux modules…"
+# The kernel filename changed in FreeDOS 1.2
+if [ ! -f "${WORK}/image/fdos/bin/kernel.sys" ]; then
+    cp "${WORK}/image/fdos/bin/kernl386.sys" \
+        "${WORK}/image/fdos/bin/kernel.sys"
+fi
+
+msg "Copying syslinux modules..."
 if [ ! -z ${SYSLINUX_MEMDISK} ]; then
     cp "${SYSLINUX_MEMDISK}" "${WORK}/image/boot/" \
         || die "Copying syslinux memdisk failed."
@@ -243,4 +268,3 @@ done
 copy_overlay
 
 cleanup
-

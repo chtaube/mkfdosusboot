@@ -20,7 +20,7 @@ Current dependencies
 
 These tools are required for the script to run:
 
-* /bin/sh (tested with dash on Debian 8.2)
+* /bin/sh (tested with dash on Debian 9.2)
 * unzip (for unpacking FreeDOS distribution sets)
 * awk
 * kpartx (access partitions within image files)
@@ -63,41 +63,40 @@ Screenshot
 
 ```
  ==> OS: Linux
- ==> Creating temporary directories in /tmp/tmp.vmkR5noNv6 …
- ==> Creating image file, 250M bytes…
-250+0 records in
-250+0 records out
-262144000 bytes (262 MB) copied, 2.37372 s, 110 MB/s
- ==> Running parted to create partition table…
-WARNING: You are not superuser. Watch out for permissions.
+ ==> Creating temporary directories in /tmp/tmp.8wQrfGw9UE ...
+ ==> Creating image file, 500M bytes...
+500+0 records in
+500+0 records out
+524288000 bytes (524 MB, 500 MiB) copied, 0.322425 s, 1.6 GB/s
+ ==> Running parted to create partition table...
+WARNING: You are not superuser.  Watch out for permissions.
 GNU Parted 3.2
-Using /home/chtaube/freedos/mkfdosusboot/usbimage-250M.img
+Using /home/chtaube/freedos/mkfdosusboot/usbimage-500M.img
 Welcome to GNU Parted! Type 'help' to view a list of commands.
-(parted) unit % 
-(parted) mklabel msdos 
-(parted) mkpart primary fat16 0 100% 
-(parted) set 1 boot on 
-(parted) q 
- ==> kpartx returned 'add map loop0p1 (253:0): 0 509952 linear /dev/loop0 2048', using '/dev/mapper/loop0p1'
+(parted) unit %
+(parted) mklabel msdos
+(parted) mkpart primary fat16 0 100%
+(parted) set 1 boot on
+(parted) q
+ ==> kpartx returned 'add map loop0p1 (253:21): 0 1021952 linear 7:0 2048', using '/dev/mapper/loop0p1'
  ==> Making filesystem on /dev/mapper/loop0p1
-mkfs.fat 3.0.27 (2014-11-12)
-unable to get drive geometry, using default 255/63
- ==> Installing syslinux…
- ==> Mounting image 'sudo mount -o uid=1000 …'
- ==> Creating directory structure on image…
+mkfs.fat 4.1 (2017-01-24)
+ ==> Installing syslinux...
+ ==> Mounting image 'sudo mount -o uid=1000 ...'
+ ==> Creating directory structure on image...
  ==> Mounting FreeDOS ISO
- ==> Unzipping files to temporary location…
- ==> Copying FreeDOS files to image…
- ==> Copying syslinux modules…
- ==> Copying files from overlay overlay…
- ==> Cleaning up…
+ ==> Unzipping files to temporary location...
+ ==> Copying FreeDOS files to image...
+ ==> Copying syslinux modules...
+ ==> Copying files from overlay overlay...
+ ==> Cleaning up...
 loop deleted : /dev/loop0
 ```
 
 Hints
 -----
 
-* Add a symlink from `overlay/boot/fd11src.iso` pointing to your FreeDOS 1.1 distribution ISO. The ISO-image will be included on the USB stick and, upon boot, the contents is available as a virtual CD-ROM drive within FreeDOS.
+* Add a symlink from `overlay/boot/FD12CD.iso` pointing to your FreeDOS 1.2 distribution ISO. The ISO-image will be included on the USB stick and, upon boot, the contents is available as a virtual CD-ROM drive within FreeDOS.
 * The syslinux bootloader is preconfigured to boot Odin 0.6 and 0.7 boot images. Just put the image files into `overlay/boot/fdodin06.144` (from [Odin 0.6](http://odin.fdos.org/)) or `overlay/boot/odin2880.img` (from [Odin 0.7](http://odin.fdos.org/odin2005/)) and run the script.
 * Boot menu items for [Memtest86+](http://www.memtest.org/) and [Hardware Detection Tool](http://hdt-project.org/) have been added. For Memtest86+, download the "Pre-Compiled package for Floppy (DOS - Win)", unzip the file and copy `memtestp.bin` to `overlay/boot/memtestp` (remove the .bin extension).
 

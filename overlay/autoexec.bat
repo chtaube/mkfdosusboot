@@ -1,7 +1,7 @@
-@echo off 
+@echo off
 set lang=EN
 set PATH=%dosdir%\bin
-set NLSPATH=%dosdir%\NLS 
+set NLSPATH=%dosdir%\NLS
 set HELPPATH=%dosdir%\HELP
 set temp=%dosdir%\temp
 set tmp=%dosdir%\temp
@@ -28,8 +28,8 @@ goto end
 :end
 SET AUTOFILE=C:\autoexec.bat
 SET CFGFILE=C:\fdconfig.sys
-alias reboot=fdapm warmboot 
-alias halt=fdapm poweroff 
+alias reboot=fdapm warmboot
+alias halt=fdapm poweroff
 echo type HELP to get support on commands and navigation
 echo.
 echo Welcome to FreeDOS 1.1
